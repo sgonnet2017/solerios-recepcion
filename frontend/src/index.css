@@ -1,0 +1,156 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@400;500&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Copiado de Obras: mismas clases (card, btn-primary, input-field...) para
+   que todas las apps se vean igual. Cambian solo los badges de estado. */
+
+@layer base {
+  html,
+  body,
+  #root {
+    @apply bg-bg-primary text-text-primary min-h-screen;
+    font-family: "DM Sans", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::-webkit-scrollbar {
+    width: 12px;
+    height: 14px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+  }
+  ::-webkit-scrollbar-corner {
+    background: var(--scrollbar-track);
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-bg-card border border-border-subtle rounded-xl shadow-card;
+  }
+  .btn-primary {
+    @apply bg-gold text-white font-medium px-4 py-2 rounded-lg
+           hover:bg-gold-light active:bg-gold-dark transition-colors duration-150
+           disabled:opacity-40 disabled:cursor-not-allowed text-sm;
+  }
+  .btn-secondary {
+    @apply bg-bg-hover text-text-primary border border-border-subtle font-medium px-4 py-2 rounded-lg
+           hover:border-gold/40 hover:text-gold transition-colors duration-150 text-sm
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .btn-ghost {
+    @apply text-text-secondary hover:text-text-primary hover:bg-bg-hover px-3 py-2 rounded-lg
+           transition-colors duration-150 text-sm;
+  }
+  .btn-danger {
+    @apply bg-status-alert text-white font-medium px-4 py-2 rounded-lg
+           hover:opacity-90 transition-opacity duration-150
+           disabled:opacity-40 disabled:cursor-not-allowed text-sm;
+  }
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  /* Estados de una cochera: verde libre, gris ocupada, naranja venció */
+  .badge-libre {
+    @apply badge bg-emerald-600/20 text-emerald-600 dark:text-emerald-400;
+  }
+  .badge-ocupada {
+    @apply badge bg-gray-500/20 text-gray-600 dark:text-gray-300;
+  }
+  .badge-vencida {
+    @apply badge bg-orange-500/20 text-orange-600 dark:text-orange-400;
+  }
+
+  .input-field {
+    @apply w-full bg-bg-hover border border-border-subtle rounded-lg px-3 py-2
+         text-text-primary placeholder:text-text-muted
+         focus:outline-none focus:border-gold/60 focus:ring-1 focus:ring-gold/20
+         transition-colors duration-150 text-base;
+  }
+  select.input-field {
+    @apply pr-8;
+  }
+  .page-title {
+    @apply font-heading text-3xl font-medium text-text-primary tracking-tight;
+  }
+  .section-title {
+    @apply font-heading text-xl font-medium text-text-primary;
+  }
+
+  .sidebar-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
+           text-text-secondary hover:text-text-primary hover:bg-bg-hover
+           transition-colors duration-150 cursor-pointer;
+  }
+  .sidebar-item-active {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
+           bg-gold/15 text-gold border border-gold/25 hover:bg-gold/20;
+  }
+  .label-xs {
+    @apply block text-xs font-medium text-text-secondary mb-1 uppercase tracking-wider;
+  }
+}
+
+@layer utilities {
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f5f5;
+    --bg-card: #ffffff;
+    --bg-hover: #f3f4f6;
+    --text-primary: #111111;
+    --text-secondary: #555555;
+    --text-muted: #777777;
+    --border-subtle: #dddddd;
+    --scrollbar-track: #e5e7eb;
+    --scrollbar-thumb: #9ca3af;
+    --scrollbar-thumb-hover: #6b7280;
+    --status-alert: #e85555;
+    --status-ok: #4cb95e;
+  }
+  .dark {
+    --bg-primary: #080d09;
+    --bg-secondary: #0e1510;
+    --bg-card: #131a14;
+    --bg-hover: #1a241b;
+    --text-primary: #f2f7f2;
+    --text-secondary: #96a896;
+    --text-muted: #516151;
+    --border-subtle: #1e2e1f;
+    --scrollbar-track: #2b2d2b;
+    --scrollbar-thumb: #515151;
+    --scrollbar-thumb-hover: rgba(214, 222, 230, 0.4);
+    --status-alert: #e85555;
+    --status-ok: #4cb95e;
+  }
+}
+
+/* Igual que Obras: en el celular el texto chico sube un escalón */
+@media (max-width: 639px) {
+  .text-xs,
+  .label-xs,
+  .badge {
+    font-size: 0.875rem !important;
+    line-height: 1.25rem !important;
+  }
+  .text-sm,
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost,
+  .btn-danger,
+  .sidebar-item,
+  .sidebar-item-active {
+    font-size: 1rem !important;
+    line-height: 1.5rem !important;
+  }
+}

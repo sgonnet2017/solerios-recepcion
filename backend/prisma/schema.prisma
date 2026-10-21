@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["recepcion"]
+}
+
+// Cochera del edificio. Solo el código; el estado (Libre / Ocupada / Venció)
+// no se guarda, se calcula a partir de su asignación en uso.
+model Cochera {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  codigo       String       @unique
+  asignaciones Asignacion[]
+  createdAt    DateTime     @default(now())
+
+  @@map("cocheras")
+  @@schema("recepcion")
+}
+
+// Una cochera usada por un apartamento durante un período. Nunca se borra:
+// al liberarla se completa liberadaEn, y así queda el historial.
+model Asignacion {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cocheraId   String    @db.Uuid
+  cochera     Cochera   @relation(fields: [cocheraId], references: [id])
+  // texto libre que escribe recepción, ej. "201" o "Jorge Perez 201"
+  apartamento String
+  desde       DateTime  @db.Date
+  // vacío = sin fecha de fin
+  hasta       DateTime? @db.Date
+  // vacío mientras la cochera está en uso
+  liberadaEn  DateTime?
+  // Copia de cocheraId mientras la asignación está en uso, y vacío cuando se
+  // libera. Como es @unique, la base rechaza una segunda asignación en uso
+  // para la misma cochera (Postgres permite muchos vacíos en un @unique).
+  enUsoCocheraId String?  @unique @db.Uuid
+  creadoPor   String?
+  createdAt   DateTime  @default(now())
+
+  @@index([cocheraId])
+  @@map("asignaciones")
+  @@schema("recepcion")
+}
+
+// Reserva del hidromasaje (inicio → fin, con la limpieza incluida). Lo que
+// impide que dos reservas se pisen son sus bloques (ver ReservaBloque).
+model Reserva {
+  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  apartamento String
+  // opcional, lo escribe recepción al reservar (ej. "trae toallas propias")
+  comentario  String?
+  inicio      DateTime
+  fin         DateTime
+  // cancelar no borra: completa canceladaEn y borra sus bloques
+  canceladaEn DateTime?
+  bloques     ReservaBloque[]
+  creadoPor   String?
+  createdAt   DateTime        @default(now())
+
+  @@index([inicio])
+  @@map("reservas")
+  @@schema("recepcion")
+}
+
+// Un pedazo de 15 minutos (PASO_RESERVA_MIN) que ocupa una reserva activa.
+// Una reserva a las 15:15 (hasta las 16:15) tiene cuatro:
+// 15:15, 15:30, 15:45 y 16:00. Como `inicio` es la clave (@id, no se puede
+// repetir), la base rechaza que dos reservas ocupen el mismo pedazo, aunque
+// empiecen a horas distintas y se guarden en el mismo instante.
+model ReservaBloque {
+  inicio    DateTime @id
+  reservaId String   @db.Uuid
+  reserva   Reserva  @relation(fields: [reservaId], references: [id], onDelete: Cascade)
+
+  @@index([reservaId])
+  @@map("reserva_bloques")
+  @@schema("recepcion")
+}
