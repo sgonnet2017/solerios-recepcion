@@ -4,7 +4,7 @@ import { toast } from 'react-hot-toast'
 import { Loader2, Lock, Mail } from 'lucide-react'
 import api from '@/services/api'
 import { useAuthStore } from '@/stores/authStore'
-import ZulamianLogo from '@/assets/Logo.png'
+import SoleriosLogo from '@/assets/LogoSolerios.png'
 
 // Copia del login de Obras (mismo diseño), con el nombre de esta app. El email
 // y la contraseña los revisa el Portal, a través del backend.
@@ -49,7 +49,7 @@ export default function Login() {
         <div className="relative z-10 text-center space-y-8 max-w-xs w-full">
           <div className="flex justify-center">
             <div className="w-24 h-24 rounded-2xl bg-white/90 p-3 shadow-lg flex items-center justify-center">
-              <img src={ZulamianLogo} alt="Zulamian" className="w-full h-full object-contain" />
+              <img src={SoleriosLogo} alt="Solerios" className="w-full h-full object-contain" />
             </div>
           </div>
           <div>
@@ -76,7 +76,7 @@ export default function Login() {
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
         <div className="lg:hidden text-center mb-10">
           <div className="w-16 h-16 rounded-xl bg-white/90 p-2 mx-auto mb-4 flex items-center justify-center">
-            <img src={ZulamianLogo} alt="Zulamian" className="w-full h-full object-contain" />
+            <img src={SoleriosLogo} alt="Solerios" className="w-full h-full object-contain" />
           </div>
           <h1 className="font-heading text-2xl text-text-primary font-semibold">Solerios</h1>
           <p className="text-gold text-xs tracking-widest uppercase mt-1">Recepción</p>
