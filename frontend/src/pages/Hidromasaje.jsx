@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
 import api from '@/services/api'
 import { PageSpinner } from '@/components/ui/Spinner'
@@ -24,16 +24,15 @@ export default function Hidromasaje() {
   // sube en 1 para volver a pedir las reservas (después de guardar)
   const [version, setVersion] = useState(0)
   const [abierto, setAbierto] = useState(null) // lo que recibe ReservaModal
-  const calendarioRef = useRef(null)
 
-  // Abre el calendario del navegador (el mismo de cualquier campo de fecha).
-  // showPicker no existe en navegadores viejos: ahí basta con el foco.
-  function abrirCalendario() {
-    const input = calendarioRef.current
+  // En la compu, un clic en un campo de fecha no siempre abre el calendario:
+  // showPicker() lo abre. En el celular el toque ya lo abre solo; si
+  // showPicker no existe o el navegador no lo deja, no pasa nada.
+  function abrirCalendario(e) {
     try {
-      input.showPicker()
+      e.currentTarget.showPicker()
     } catch {
-      input.focus()
+      // el navegador abre su calendario por su cuenta
     }
   }
 
@@ -123,23 +122,21 @@ export default function Hidromasaje() {
             <button className="btn-secondary px-2" onClick={() => mover(-1)} aria-label="Anterior">
               <ChevronLeft size={16} />
             </button>
-            {/* tocar la fecha abre un calendario para saltar a cualquier día */}
-            <div className="relative">
-              <button
-                onClick={abrirCalendario}
-                className="btn-ghost min-w-[6.5rem] flex items-center justify-center gap-1.5 font-medium text-text-primary capitalize"
-                title="Elegir una fecha"
-              >
-                <CalendarDays size={15} className="text-gold" />
-                {etiqueta}
-              </button>
+            {/* Tocar la fecha abre un calendario para saltar a cualquier día.
+                Lo que se ve es la etiqueta; encima hay un campo de fecha
+                transparente que recibe el toque. Tiene que ser un toque
+                directo sobre el campo: muchos celulares (sobre todo iPhone)
+                no abren el calendario si se lo pide otro botón. */}
+            <div className="relative overflow-hidden btn-ghost min-w-[6.5rem] flex items-center justify-center gap-1.5 font-medium text-text-primary capitalize">
+              <CalendarDays size={15} className="text-gold" />
+              {etiqueta}
               <input
-                ref={calendarioRef}
                 type="date"
                 aria-label="Elegir una fecha"
-                tabIndex={-1}
-                className="absolute inset-0 opacity-0 pointer-events-none"
+                title="Elegir una fecha"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 value={dia}
+                onClick={abrirCalendario}
                 onChange={(e) => e.target.value && setDia(e.target.value)}
               />
             </div>
