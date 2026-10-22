@@ -1,28 +1,36 @@
-import { NavLink, useNavigate } from 'react-router-dom'
-import { Car, Bath, LogOut, ChevronRight, X, ExternalLink, Building2 } from 'lucide-react'
-import toast from 'react-hot-toast'
-import { useAuthStore } from '@/stores/authStore'
-import api from '@/services/api'
+import { NavLink, useNavigate } from "react-router-dom";
+import {
+  Car,
+  Bath,
+  LogOut,
+  ChevronRight,
+  X,
+  ExternalLink,
+  Building2,
+} from "lucide-react";
+import toast from "react-hot-toast";
+import { useAuthStore } from "@/stores/authStore";
+import api from "@/services/api";
 
 const NAV = [
-  { to: '/cocheras', label: 'Cocheras', icon: Car },
-  { to: '/hidromasaje', label: 'Hidromasaje', icon: Bath },
-]
+  { to: "/cocheras", label: "Cocheras", icon: Car },
+  { to: "/hidromasaje", label: "Hidromasaje", icon: Bath },
+];
 
 // Menú lateral (mismo diseño que Obras). En el celular se esconde y se abre
 // con el botón de la barra de arriba.
 export default function Sidebar({ isOpen, onClose, tema, onToggleTema }) {
-  const user = useAuthStore((s) => s.user)
-  const logout = useAuthStore((s) => s.logout)
-  const navigate = useNavigate()
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+  const navigate = useNavigate();
 
   async function handleLogout() {
     try {
-      await api.post('/auth/logout')
+      await api.post("/auth/logout");
     } catch {}
-    logout()
-    navigate('/login', { replace: true })
-    toast.success('Sesión cerrada')
+    logout();
+    navigate("/login", { replace: true });
+    toast.success("Sesión cerrada");
   }
 
   return (
@@ -32,7 +40,7 @@ export default function Sidebar({ isOpen, onClose, tema, onToggleTema }) {
       bg-bg-secondary border-r border-border-subtle
       flex flex-col
       transition-transform duration-200 ease-in-out
-      ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+      ${isOpen ? "translate-x-0" : "-translate-x-full"}
       lg:translate-x-0
     `}
     >
@@ -45,7 +53,9 @@ export default function Sidebar({ isOpen, onClose, tema, onToggleTema }) {
             <p className="font-heading text-sm font-semibold text-text-primary tracking-wide leading-none">
               Recepción
             </p>
-            <p className="text-[10px] text-gold tracking-widest uppercase mt-1">Edificio</p>
+            <p className="text-[10px] text-gold tracking-widest uppercase mt-1">
+              Edificio
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -63,13 +73,17 @@ export default function Sidebar({ isOpen, onClose, tema, onToggleTema }) {
             key={to}
             to={to}
             onClick={onClose}
-            className={({ isActive }) => (isActive ? 'sidebar-item-active' : 'sidebar-item')}
+            className={({ isActive }) =>
+              isActive ? "sidebar-item-active" : "sidebar-item"
+            }
           >
             {({ isActive }) => (
               <>
                 <Icon size={16} className="shrink-0" />
                 <span className="flex-1">{label}</span>
-                {isActive && <ChevronRight size={14} className="shrink-0 opacity-60" />}
+                {isActive && (
+                  <ChevronRight size={14} className="shrink-0 opacity-60" />
+                )}
               </>
             )}
           </NavLink>
@@ -78,41 +92,53 @@ export default function Sidebar({ isOpen, onClose, tema, onToggleTema }) {
 
       <div className="px-3 pb-4 border-t border-border-subtle pt-3">
         <button onClick={onToggleTema} className="sidebar-item w-full">
-          <svg width="34" height="20" viewBox="0 0 34 20" fill="none" className="shrink-0">
+          <svg
+            width="34"
+            height="20"
+            viewBox="0 0 34 20"
+            fill="none"
+            className="shrink-0"
+          >
             <rect
               width="34"
               height="20"
               rx="10"
-              fill={tema === 'dark' ? 'currentColor' : 'transparent'}
+              fill={tema === "dark" ? "currentColor" : "transparent"}
               stroke="currentColor"
               strokeWidth="1.5"
               className="text-text-secondary"
             />
             <circle
-              cx={tema === 'dark' ? '24' : '10'}
+              cx={tema === "dark" ? "24" : "10"}
               cy="10"
               r="7"
-              fill={tema === 'dark' ? 'white' : 'currentColor'}
+              fill={tema === "dark" ? "white" : "currentColor"}
               className="text-text-secondary"
             />
           </svg>
-          <span>{tema === 'dark' ? 'Modo claro' : 'Modo oscuro'}</span>
+          <span>{tema === "dark" ? "Modo claro" : "Modo oscuro"}</span>
         </button>
 
         <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg mb-1">
           <div className="w-7 h-7 rounded-full bg-gold/20 border border-gold/30 flex items-center justify-center shrink-0">
-            <span className="text-xs font-medium text-gold">{user?.name?.[0] ?? 'U'}</span>
+            <span className="text-xs font-medium text-gold">
+              {user?.name?.[0] ?? "U"}
+            </span>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium text-text-primary truncate">{user?.name}</p>
-            <p className="text-[10px] text-text-muted truncate">{user?.email}</p>
+            <p className="text-xs font-medium text-text-primary truncate">
+              {user?.name}
+            </p>
+            <p className="text-[10px] text-text-muted truncate">
+              {user?.email}
+            </p>
           </div>
         </div>
 
-        <a href={import.meta.env.VITE_PORTAL_URL || 'http://localhost:5174'} className="sidebar-item w-full">
+        {/* <a href={import.meta.env.VITE_PORTAL_URL || 'http://localhost:5174'} className="sidebar-item w-full">
           <ExternalLink size={15} />
           <span>Volver al portal</span>
-        </a>
+        </a> */}
 
         <button
           onClick={handleLogout}
@@ -123,5 +149,5 @@ export default function Sidebar({ isOpen, onClose, tema, onToggleTema }) {
         </button>
       </div>
     </aside>
-  )
+  );
 }
