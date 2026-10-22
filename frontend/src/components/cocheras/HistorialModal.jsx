@@ -46,12 +46,23 @@ export default function HistorialModal({ cochera, onClose }) {
               <span className="font-medium text-text-primary">
                 Apto. {a.apartamento}
               </span>
-              {a.liberadaEn ? (
+              {a.situacion === "en-uso" && (
+                <span className="badge-ocupada">En uso</span>
+              )}
+              {a.situacion === "reservada" && (
+                <span className="badge bg-sky-500/15 text-sky-700 dark:text-sky-300">
+                  Reservada
+                </span>
+              )}
+              {a.situacion === "liberada" && (
                 <span className="text-xs text-text-muted">
                   Liberada el {fechaHora(a.liberadaEn)}
                 </span>
-              ) : (
-                <span className="badge-ocupada">En uso</span>
+              )}
+              {a.situacion === "cancelada" && (
+                <span className="text-xs text-text-muted">
+                  Reserva cancelada el {fechaHora(a.liberadaEn)}
+                </span>
               )}
             </div>
             <p className="text-text-muted">

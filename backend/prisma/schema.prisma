@@ -2,25 +2,34 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// En qué schema (compartimento de la base) viven las tablas no se escribe acá:
+// lo dice la variable DB_SCHEMA ("recepcion" si no está, que es la base real;
+// "solerios-testing" en la compu para probar). Ver prisma.config.ts y
+// src/services/prisma.service.js.
 datasource db {
   provider = "postgresql"
-  schemas  = ["recepcion"]
 }
 
-// Cochera del edificio. Solo el código; el estado (Libre / Ocupada / Venció)
-// no se guarda, se calcula a partir de su asignación en uso.
+// Cochera del edificio. El estado (Libre / Ocupada / Venció) no se guarda: se
+// calcula con sus asignaciones y la fecha de hoy.
 model Cochera {
   id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   codigo       String       @unique
   asignaciones Asignacion[]
+  // Se suma 1 cada vez que se asigna, reserva o extiende esta cochera. No
+  // importa el número: actualizar la fila la "traba" hasta que termina la
+  // operación, así dos recepcionistas no pueden cargar fechas que se pisen
+  // al mismo tiempo (la segunda espera y después ve lo que guardó la primera).
+  version      Int          @default(0)
   createdAt    DateTime     @default(now())
 
   @@map("cocheras")
-  @@schema("recepcion")
 }
 
-// Una cochera usada por un apartamento durante un período. Nunca se borra:
-// al liberarla se completa liberadaEn, y así queda el historial.
+// Una cochera usada (o reservada a futuro) por un apartamento durante un
+// período. Nunca se borra: al liberarla o cancelarla se completa liberadaEn, y
+// así queda el historial. Dos asignaciones activas de la misma cochera no
+// pueden pisarse en fechas (lo controla cocheras.routes.js, trabando la cochera).
 model Asignacion {
   id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   cocheraId   String    @db.Uuid
@@ -30,18 +39,17 @@ model Asignacion {
   desde       DateTime  @db.Date
   // vacío = sin fecha de fin
   hasta       DateTime? @db.Date
-  // vacío mientras la cochera está en uso
+  // vacío mientras está activa (en uso o reservada); con fecha = liberada o cancelada
   liberadaEn  DateTime?
-  // Copia de cocheraId mientras la asignación está en uso, y vacío cuando se
-  // libera. Como es @unique, la base rechaza una segunda asignación en uso
-  // para la misma cochera (Postgres permite muchos vacíos en un @unique).
+  // YA NO SE USA (era la regla anti-choque cuando no había reservas a
+  // futuro). Queda vacío; se puede borrar más adelante, cuando la versión
+  // vieja de la app ya no esté publicada.
   enUsoCocheraId String?  @unique @db.Uuid
   creadoPor   String?
   createdAt   DateTime  @default(now())
 
   @@index([cocheraId])
   @@map("asignaciones")
-  @@schema("recepcion")
 }
 
 // Reserva del hidromasaje (inicio → fin, con la limpieza incluida). Lo que
@@ -61,7 +69,6 @@ model Reserva {
 
   @@index([inicio])
   @@map("reservas")
-  @@schema("recepcion")
 }
 
 // Un pedazo de 15 minutos (PASO_RESERVA_MIN) que ocupa una reserva activa.
@@ -76,5 +83,4 @@ model ReservaBloque {
 
   @@index([reservaId])
   @@map("reserva_bloques")
-  @@schema("recepcion")
 }

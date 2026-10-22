@@ -9,6 +9,7 @@ import CocheraCard from '@/components/cocheras/CocheraCard'
 import AsignarModal from '@/components/cocheras/AsignarModal'
 import ExtenderModal from '@/components/cocheras/ExtenderModal'
 import HistorialModal from '@/components/cocheras/HistorialModal'
+import { fechaCorta } from '@/utils/fechas'
 
 const FILTROS = [
   { valor: 'todas', etiqueta: 'Todas' },
@@ -55,6 +56,16 @@ export default function Cocheras() {
     }
   }
 
+  async function cancelarReserva(cochera, reserva) {
+    try {
+      await api.post(`/cocheras/${cochera.id}/reservas/${reserva.id}/cancelar`)
+      toast.success(`Reserva de ${cochera.codigo} cancelada`)
+      alTerminar()
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'No se pudo cancelar')
+    }
+  }
+
   if (errorCarga && !cocheras)
     return <ErrorCarga mensaje="No se pudieron cargar las cocheras." onReintentar={cargar} />
   if (!cocheras) return <PageSpinner />
@@ -66,7 +77,8 @@ export default function Cocheras() {
       (filtro === 'todas' || c.estado === filtro) &&
       (!texto ||
         c.codigo.toLowerCase().includes(texto) ||
-        c.asignacion?.apartamento.toLowerCase().includes(texto)),
+        c.asignacion?.apartamento.toLowerCase().includes(texto) ||
+        c.proximas?.some((r) => r.apartamento.toLowerCase().includes(texto))),
   )
 
   return (
@@ -108,14 +120,20 @@ export default function Cocheras() {
       {visibles.length === 0 ? (
         <p className="text-text-muted text-sm">Ninguna cochera coincide.</p>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        // grid-cols-1: en el celular, una columna del ancho exacto de la
+        // pantalla (sin eso, una línea larga como "Reservada: ..." la estira)
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {visibles.map((c) => (
-            <CocheraCard key={c.id} cochera={c} onAccion={(tipo) => setAbierto({ tipo, cochera: c })} />
+            <CocheraCard
+              key={c.id}
+              cochera={c}
+              onAccion={(tipo, reserva) => setAbierto({ tipo, cochera: c, reserva })}
+            />
           ))}
         </div>
       )}
 
-      {(abierto?.tipo === 'asignar' || abierto?.tipo === 'reasignar') && (
+      {['asignar', 'reservar', 'reasignar'].includes(abierto?.tipo) && (
         <AsignarModal
           cochera={abierto.cochera}
           modo={abierto.tipo}
@@ -135,6 +153,15 @@ export default function Cocheras() {
           mensaje={`La cochera deja de estar asignada al apto. ${abierto.cochera.asignacion.apartamento}. Queda en el historial.`}
           textoConfirmar="Liberar"
           onConfirmar={() => liberar(abierto.cochera)}
+          onClose={() => setAbierto(null)}
+        />
+      )}
+      {abierto?.tipo === 'cancelar-reserva' && (
+        <ConfirmarDialog
+          titulo={`Cancelar reserva de ${abierto.cochera.codigo}`}
+          mensaje={`Se cancela la reserva del apto. ${abierto.reserva.apartamento} (${fechaCorta(abierto.reserva.desde)} al ${fechaCorta(abierto.reserva.hasta)}). Queda en el historial.`}
+          textoConfirmar="Cancelar reserva"
+          onConfirmar={() => cancelarReserva(abierto.cochera, abierto.reserva)}
           onClose={() => setAbierto(null)}
         />
       )}
