@@ -14,7 +14,7 @@ export const PASO_RESERVA_MIN = 15;
 // como están.
 export const DURACION_RESERVA_MIN = 60;
 
-// Horario de uso, hora de Uruguay. null = sin restricción (las 24 horas).
-// Para limitarlo: { apertura: "08:00", cierre: "22:00" } — la reserva tiene
-// que terminar a la hora de cierre o antes.
-export const HORARIO_HIDROMASAJE = null;
+// Horario de uso, hora de Uruguay (null = las 24 horas). La reserva tiene que
+// terminar a la hora de cierre o antes: con 07:00 a 23:00 y reservas de una
+// hora, la primera es a las 07:00 y la última a las 22:00.
+export const HORARIO_HIDROMASAJE = { apertura: "07:00", cierre: "22:00" };
