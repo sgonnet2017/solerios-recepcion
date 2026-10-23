@@ -1,9 +1,11 @@
 import { ChevronRight } from 'lucide-react'
 import { fechaLarga, hoyUY, sumarDias } from '@/utils/fechas'
+import EtiquetaHidromasaje from './EtiquetaHidromasaje'
 
-// Todas las reservas de ahora en adelante, agrupadas por día.
+// Todas las reservas de ahora en adelante, agrupadas por día, cada una con
+// su hidromasaje (H1 / H2).
 // Tocar el día abre su agenda; tocar una reserva la abre para editar.
-export default function ProximasReservas({ reservas, onDia, onReserva }) {
+export default function ProximasReservas({ hidromasajes, reservas, onDia, onReserva }) {
   if (reservas.length === 0) {
     return <p className="text-text-muted text-sm">No hay reservas de acá en adelante.</p>
   }
@@ -45,6 +47,7 @@ export default function ProximasReservas({ reservas, onDia, onReserva }) {
                     <span className="hidden sm:inline"> – {r.horaFin}</span>
                   </span>
                   <span className="min-w-0">
+                    <EtiquetaHidromasaje numero={r.hidromasaje} hidromasajes={hidromasajes} />{' '}
                     <span className="font-medium text-text-primary">Apto. {r.apartamento}</span>
                     {r.creadoPor && <span className="text-xs text-text-muted ml-2">cargó {r.creadoPor}</span>}
                     {r.comentario && (

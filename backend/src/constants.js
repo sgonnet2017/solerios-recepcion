@@ -4,9 +4,16 @@ export const APP_SLUG = "recepcion";
 
 // --- Hidromasaje: el único lugar donde se configura ---
 
-// Cada cuántos minutos puede empezar una reserva (15: 15:00, 15:15, 15:30...).
-// También es el tamaño de los "bloques" con los que la base evita choques.
-export const PASO_RESERVA_MIN = 15;
+// Los hidromasajes del edificio. Comparten horario y duración. Para
+// cambiarles el nombre, se cambia acá (el número es lo que se guarda).
+export const HIDROMASAJES = [
+  { numero: 1, nombre: "Hidromasaje 1" },
+  { numero: 2, nombre: "Hidromasaje 2" },
+];
+
+// Cada cuántos minutos puede empezar una reserva. 60 = en hora justa
+// (14:00, 15:00, 16:00...); con 15 sería 14:00, 14:15, 14:30...
+export const PASO_RESERVA_MIN = 60;
 
 // Cuánto ocupa cada reserva, con la limpieza incluida (45 de uso + 15 de
 // limpieza): una reserva a las 15:15 ocupa hasta las 16:15. Tiene que ser

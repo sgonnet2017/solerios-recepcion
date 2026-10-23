@@ -1,10 +1,12 @@
 import { Plus } from 'lucide-react'
 import { sumarDias, fechaColumna, hoyUY } from '@/utils/fechas'
+import EtiquetaHidromasaje from './EtiquetaHidromasaje'
 
 // Una columna por día (en el celular, uno abajo del otro) con solo las
-// reservas hechas, para ver de un vistazo qué días están cargados.
+// reservas hechas, para ver de un vistazo qué días están cargados. Cada una
+// dice en qué hidromasaje es (H1 / H2).
 // Tocar el día abre su agenda; tocar una reserva la abre para editar.
-export default function AgendaSemana({ lunes, reservas, onDia, onReserva }) {
+export default function AgendaSemana({ lunes, hidromasajes, reservas, onDia, onReserva }) {
   const hoy = hoyUY()
   const dias = Array.from({ length: 7 }, (_, i) => sumarDias(lunes, i))
 
@@ -25,10 +27,13 @@ export default function AgendaSemana({ lunes, reservas, onDia, onReserva }) {
               <button
                 key={r.id}
                 onClick={() => onReserva(r)}
-                className="w-full text-left rounded-md px-2 py-1 text-xs bg-gold/15 border border-gold/25 hover:bg-gold/20"
+                className="w-full text-left rounded-md px-2 py-1 text-xs bg-gold/10 border border-gold/25 hover:bg-gold/20 flex items-center gap-1.5"
                 title={r.comentario ?? undefined}
               >
-                <span className="font-mono">{r.hora}</span> · Apto. {r.apartamento}
+                <EtiquetaHidromasaje numero={r.hidromasaje} hidromasajes={hidromasajes} />
+                <span className="truncate">
+                  <span className="font-mono">{r.hora}</span> · Apto. {r.apartamento}
+                </span>
               </button>
             ))}
             {dia >= hoy && (

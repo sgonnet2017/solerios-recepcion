@@ -2,7 +2,12 @@ import { Router } from "express";
 import { z } from "zod";
 import { getPrisma } from "../services/prisma.service.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
-import { PASO_RESERVA_MIN, DURACION_RESERVA_MIN, HORARIO_HIDROMASAJE } from "../constants.js";
+import {
+  PASO_RESERVA_MIN,
+  DURACION_RESERVA_MIN,
+  HORARIO_HIDROMASAJE,
+  HIDROMASAJES,
+} from "../constants.js";
 import {
   esDiaValido,
   inicioDeDiaUY,
@@ -22,8 +27,12 @@ router.param("id", (req, res, next, id) => {
 });
 
 const MIN_MS = 60 * 1000;
-// cuántos bloques de PASO_RESERVA_MIN ocupa una reserva: 60 / 15 = 4
-const BLOQUES_POR_RESERVA = DURACION_RESERVA_MIN / PASO_RESERVA_MIN;
+// Los "bloques" anti-choque son siempre de 15 minutos, aunque las reservas
+// empiecen en hora justa: así, si quedara una reserva vieja de las 15:15, una
+// nueva de las 15:00 igual choca con ella (comparten los bloques 15:15-15:45).
+const BLOQUE_MIN = 15;
+// cuántos bloques ocupa una reserva: 60 / 15 = 4
+const BLOQUES_POR_RESERVA = DURACION_RESERVA_MIN / BLOQUE_MIN;
 // Para no traer meses enteros de una vez (la agenda pide un día o una semana)
 const MAX_DIAS_CONSULTA = 31;
 
@@ -34,8 +43,14 @@ const apartamento = z.string().trim().min(1, "Falta el apartamento").max(100);
 // opcional; vacío o null = sin comentario
 const comentario = z.string().trim().max(500, "El comentario es demasiado largo").nullable();
 
+// el número de uno de los hidromasajes que existen (1 o 2)
+const hidromasaje = z
+  .number()
+  .int()
+  .refine((n) => HIDROMASAJES.some((h) => h.numero === n), "Ese hidromasaje no existe");
+
 const listarSchema = z.object({ desde: dia, hasta: dia.optional() });
-const crearSchema = z.object({ apartamento, dia, hora, comentario: comentario.optional() });
+const crearSchema = z.object({ hidromasaje, apartamento, dia, hora, comentario: comentario.optional() });
 // Una reserva hecha no cambia de día ni de hora (para eso se cancela y se
 // reserva otro turno): solo el apartamento y el comentario
 const editarSchema = z
@@ -45,13 +60,15 @@ const editarSchema = z
 
 const aMinutos = (texto) => Number(texto.slice(0, 2)) * 60 + Number(texto.slice(3, 5));
 
-// Revisa que una reserva pueda empezar a esa hora: cada 15 minutos, dentro
-// del horario y que no haya terminado. Devuelve el mensaje o null.
+// Revisa que una reserva pueda empezar a esa hora: en la grilla (hora justa),
+// dentro del horario y que no haya terminado. Devuelve el mensaje o null.
 // (Que no se pise con otra lo controla la base, con los bloques.)
 function errorDeTurno(diaTurno, horaTurno) {
   const minutos = aMinutos(horaTurno);
   if (minutos % PASO_RESERVA_MIN !== 0)
-    return `Las reservas empiezan cada ${PASO_RESERVA_MIN} minutos`;
+    return PASO_RESERVA_MIN === 60
+      ? "Las reservas empiezan en hora justa (por ejemplo 14:00 o 15:00)"
+      : `Las reservas empiezan cada ${PASO_RESERVA_MIN} minutos`;
   if (HORARIO_HIDROMASAJE) {
     const { apertura, cierre } = HORARIO_HIDROMASAJE;
     if (minutos < aMinutos(apertura) || minutos + DURACION_RESERVA_MIN > aMinutos(cierre))
@@ -62,13 +79,16 @@ function errorDeTurno(diaTurno, horaTurno) {
   return null;
 }
 
-// inicio y fin de la reserva, más los bloques de 15 minutos que ocupa
-function datosDelTurno(diaTurno, horaTurno) {
+// inicio y fin de la reserva, más los bloques de 15 minutos que ocupa en
+// ESE hidromasaje (los del otro no se tocan)
+function datosDelTurno(numero, diaTurno, horaTurno) {
   const inicio = instanteUY(diaTurno, horaTurno);
   const bloques = Array.from({ length: BLOQUES_POR_RESERVA }, (_, i) => ({
-    inicio: new Date(inicio.getTime() + i * PASO_RESERVA_MIN * MIN_MS),
+    hidromasaje: numero,
+    inicio: new Date(inicio.getTime() + i * BLOQUE_MIN * MIN_MS),
   }));
   return {
+    hidromasaje: numero,
     inicio,
     fin: new Date(inicio.getTime() + DURACION_RESERVA_MIN * MIN_MS),
     bloques: { create: bloques },
@@ -79,6 +99,7 @@ function formatearReserva(r) {
   const { dia: diaTurno, hora: horaTurno } = diaYHoraUY(r.inicio);
   return {
     id: r.id,
+    hidromasaje: r.hidromasaje,
     apartamento: r.apartamento,
     comentario: r.comentario,
     dia: diaTurno,
@@ -89,10 +110,15 @@ function formatearReserva(r) {
   };
 }
 
-// GET /reservas/config — los tiempos y el horario, para que la pantalla arme
-// la agenda sin repetir estos valores
+// GET /reservas/config — los hidromasajes, los tiempos y el horario, para
+// que la pantalla arme la agenda sin repetir estos valores
 router.get("/config", (_req, res) => {
-  res.json({ pasoMin: PASO_RESERVA_MIN, duracionMin: DURACION_RESERVA_MIN, horario: HORARIO_HIDROMASAJE });
+  res.json({
+    hidromasajes: HIDROMASAJES,
+    pasoMin: PASO_RESERVA_MIN,
+    duracionMin: DURACION_RESERVA_MIN,
+    horario: HORARIO_HIDROMASAJE,
+  });
 });
 
 // GET /reservas?desde=2026-10-16&hasta=2026-10-22 — las activas de esos días
@@ -144,25 +170,27 @@ router.post("/", async (req, res, next) => {
   const parsed = crearSchema.safeParse(req.body);
   if (!parsed.success)
     return res.status(400).json({ error: parsed.error.issues[0].message });
-  const { apartamento: apto, dia: diaTurno, hora: horaTurno, comentario: coment } = parsed.data;
+  const { hidromasaje: numero, apartamento: apto, dia: diaTurno, hora: horaTurno, comentario: coment } =
+    parsed.data;
   const error = errorDeTurno(diaTurno, horaTurno);
   if (error) return res.status(400).json({ error });
+  const nombre = HIDROMASAJES.find((h) => h.numero === numero).nombre;
   try {
     const prisma = getPrisma();
     const reserva = await prisma.reserva.create({
       data: {
         apartamento: apto,
         comentario: coment || null,
-        ...datosDelTurno(diaTurno, horaTurno),
+        ...datosDelTurno(numero, diaTurno, horaTurno),
         creadoPor: req.user?.name ?? null,
       },
     });
     res.status(201).json(formatearReserva(reserva));
   } catch (err) {
-    // P2002 = algún bloque ya lo ocupa otra reserva. Como la reserva y sus
-    // bloques se crean juntos, no queda guardado nada a medias.
+    // P2002 = algún bloque de ese hidromasaje ya lo ocupa otra reserva. Como
+    // la reserva y sus bloques se crean juntos, no queda nada a medias.
     if (err.code === "P2002")
-      return res.status(409).json({ error: "Ese horario se pisa con otra reserva" });
+      return res.status(409).json({ error: `Ese horario se pisa con otra reserva del ${nombre}` });
     next(err);
   }
 });

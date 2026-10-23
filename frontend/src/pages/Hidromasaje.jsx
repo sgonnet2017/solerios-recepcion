@@ -162,18 +162,20 @@ export default function Hidromasaje() {
           dia={dia}
           config={config}
           reservas={reservas}
-          onLibre={(hora) => setAbierto({ modo: 'crear', dia, hora })}
+          onLibre={(hora, hidromasaje) => setAbierto({ modo: 'crear', dia, hora, hidromasaje })}
           onReserva={(reserva) => setAbierto({ modo: 'editar', reserva })}
         />
       ) : vista === 'semana' ? (
         <AgendaSemana
           lunes={lunes}
+          hidromasajes={config.hidromasajes}
           reservas={reservas}
           onDia={irAlDia}
           onReserva={(reserva) => setAbierto({ modo: 'editar', reserva })}
         />
       ) : (
         <ProximasReservas
+          hidromasajes={config.hidromasajes}
           reservas={reservas}
           onDia={irAlDia}
           onReserva={(reserva) => setAbierto({ modo: 'editar', reserva })}

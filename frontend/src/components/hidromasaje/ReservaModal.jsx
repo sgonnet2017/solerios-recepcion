@@ -6,16 +6,18 @@ import Modal from '@/components/ui/Modal'
 import { fechaLarga, aMinutos, aHora } from '@/utils/fechas'
 
 // Crear, editar o cancelar una reserva.
-//  - inicial = { modo: 'crear', dia, hora }: el turno libre que se tocó
+//  - inicial = { modo: 'crear', dia, hora, hidromasaje }: el turno libre que se tocó
 //  - inicial = { modo: 'editar', reserva }: una reserva existente
-// Una reserva hecha no cambia de día ni de hora: solo el apartamento y el
-// comentario (para otro turno, se cancela y se reserva de nuevo).
+// Una reserva hecha no cambia de día, hora ni hidromasaje: solo el
+// apartamento y el comentario (para otro turno, se cancela y se reserva de nuevo).
 export default function ReservaModal({ config, inicial, onClose, onListo }) {
   const editando = inicial.modo === 'editar'
   const original = editando ? inicial.reserva : null
   const dia = original?.dia ?? inicial.dia
   const hora = original?.hora ?? inicial.hora
   const horaFin = original?.horaFin ?? aHora(aMinutos(hora) + config.duracionMin)
+  const numero = original?.hidromasaje ?? inicial.hidromasaje
+  const nombre = config.hidromasajes.find((h) => h.numero === numero)?.nombre ?? 'Hidromasaje'
   const [form, setForm] = useState({
     apartamento: original?.apartamento ?? '',
     comentario: original?.comentario ?? '',
@@ -38,8 +40,8 @@ export default function ReservaModal({ config, inicial, onClose, onListo }) {
         await api.patch(`/reservas/${original.id}`, cambios)
         toast.success('Reserva actualizada')
       } else {
-        await api.post('/reservas', { ...form, dia, hora })
-        toast.success(`Reservado ${hora} para el apto. ${form.apartamento.trim()}`)
+        await api.post('/reservas', { ...form, dia, hora, hidromasaje: numero })
+        toast.success(`${nombre}: reservado ${hora} para el apto. ${form.apartamento.trim()}`)
       }
       onListo()
     } catch (err) {
@@ -65,7 +67,7 @@ export default function ReservaModal({ config, inicial, onClose, onListo }) {
   }
 
   return (
-    <Modal titulo={editando ? 'Reserva del hidromasaje' : 'Reservar hidromasaje'} onClose={onClose}>
+    <Modal titulo={editando ? `Reserva · ${nombre}` : `Reservar ${nombre}`} onClose={onClose}>
       <p className="text-sm text-text-secondary">
         {fechaLarga(dia)} · {hora} a {horaFin}
       </p>

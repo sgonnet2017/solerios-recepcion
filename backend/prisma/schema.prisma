@@ -56,6 +56,8 @@ model Asignacion {
 // impide que dos reservas se pisen son sus bloques (ver ReservaBloque).
 model Reserva {
   id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  // en cuál de los hidromasajes (ver HIDROMASAJES en src/constants.js)
+  hidromasaje Int             @default(1)
   apartamento String
   // opcional, lo escribe recepción al reservar (ej. "trae toallas propias")
   comentario  String?
@@ -71,16 +73,19 @@ model Reserva {
   @@map("reservas")
 }
 
-// Un pedazo de 15 minutos (PASO_RESERVA_MIN) que ocupa una reserva activa.
-// Una reserva a las 15:15 (hasta las 16:15) tiene cuatro:
-// 15:15, 15:30, 15:45 y 16:00. Como `inicio` es la clave (@id, no se puede
-// repetir), la base rechaza que dos reservas ocupen el mismo pedazo, aunque
-// empiecen a horas distintas y se guarden en el mismo instante.
+// Un pedazo de 15 minutos (BLOQUE_MIN en reservas.routes.js) que ocupa una
+// reserva activa. Una reserva a las 15:00 (hasta las 16:00) tiene cuatro:
+// 15:00, 15:15, 15:30 y 15:45. La clave es hidromasaje + inicio (@@id, no
+// se puede repetir): la base rechaza que dos reservas ocupen el mismo pedazo
+// del MISMO hidromasaje, aunque empiecen a horas distintas y se guarden en el
+// mismo instante. El 1 y el 2 pueden estar ocupados a la misma hora.
 model ReservaBloque {
-  inicio    DateTime @id
-  reservaId String   @db.Uuid
-  reserva   Reserva  @relation(fields: [reservaId], references: [id], onDelete: Cascade)
+  hidromasaje Int      @default(1)
+  inicio      DateTime
+  reservaId   String   @db.Uuid
+  reserva     Reserva  @relation(fields: [reservaId], references: [id], onDelete: Cascade)
 
+  @@id([hidromasaje, inicio])
   @@index([reservaId])
   @@map("reserva_bloques")
 }

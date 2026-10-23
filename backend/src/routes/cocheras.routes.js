@@ -162,6 +162,22 @@ function responderError(err, res, next) {
   next(err);
 }
 
+// Lo que la pantalla necesita de una cochera: estado de hoy, la asignación
+// actual (si tiene) y sus reservas a futuro. `c.asignaciones` = las activas.
+function armarCochera(c, hoy) {
+  const { actual, proximas, estado } = clasificar(c.asignaciones, hoy);
+  return {
+    id: c.id,
+    codigo: c.codigo,
+    estado,
+    asignacion: actual ? formatearAsignacion(actual, hoy) : null,
+    proximas: proximas.map((a) => formatearAsignacion(a, hoy)),
+  };
+}
+
+// orden "natural": C-2 antes que C-10
+const porCodigo = (a, b) => a.codigo.localeCompare(b.codigo, "es", { numeric: true });
+
 // GET /cocheras — todas, con su estado de hoy, la asignación actual (si
 // tiene) y sus reservas a futuro
 router.get("/", async (_req, res, next) => {
@@ -171,20 +187,93 @@ router.get("/", async (_req, res, next) => {
       include: { asignaciones: { where: { liberadaEn: null } } },
     });
     const hoy = hoyUY();
-    const resultado = cocheras
-      .map((c) => {
-        const { actual, proximas, estado } = clasificar(c.asignaciones, hoy);
-        return {
-          id: c.id,
-          codigo: c.codigo,
-          estado,
-          asignacion: actual ? formatearAsignacion(actual, hoy) : null,
-          proximas: proximas.map((a) => formatearAsignacion(a, hoy)),
-        };
-      })
-      // orden "natural": C-2 antes que C-10
-      .sort((a, b) => a.codigo.localeCompare(b.codigo, "es", { numeric: true }));
-    res.json(resultado);
+    res.json(cocheras.map((c) => armarCochera(c, hoy)).sort(porCodigo));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- Calendario ---
+// Para el calendario no se guarda nada por día: se toman los períodos
+// (desde → hasta) que ya existen y se devuelve, por cochera, la "barra" que
+// ocupa cada uno dentro del rango pedido.
+const MAX_DIAS_CALENDARIO = 62;
+const calendarioSchema = z.object({ desde: dia, hasta: dia });
+
+// El tramo que se dibuja de una asignación, o null si no se dibuja:
+//  - activa: de su desde a su hasta (una vencida, hasta hoy)
+//  - liberada: hasta el día en que se liberó (antes de su hasta si se fue
+//    antes; después si estuvo vencida y se liberó tarde)
+//  - cancelada (reserva que nunca empezó): no se dibuja
+function barra(a, hoy) {
+  const sit = situacion(a, hoy);
+  if (sit === "cancelada") return null;
+  const desde = deColumnaDia(a.desde);
+  let hasta = deColumnaDia(a.hasta);
+  let tipo;
+  if (sit === "liberada") {
+    tipo = "liberada";
+    hasta = hoyUY(a.liberadaEn);
+  } else if (sit === "reservada") {
+    tipo = "reserva";
+  } else {
+    tipo = hasta && hasta < hoy ? "vencida" : "ocupada";
+    if (tipo === "vencida") hasta = hoy;
+  }
+  return {
+    id: a.id,
+    apartamento: a.apartamento,
+    desde,
+    // null = sin fecha de fin (la barra sigue más allá del rango)
+    hasta,
+    // las fechas reales, para mostrar al tocar la barra
+    desdeReal: desde,
+    hastaReal: deColumnaDia(a.hasta),
+    tipo,
+    creadoPor: a.creadoPor,
+  };
+}
+
+// GET /cocheras/calendario?desde=2026-10-19&hasta=2026-11-08 — cada cochera
+// (con los mismos datos que GET /cocheras) y las barras que tocan ese rango
+router.get("/calendario", async (req, res, next) => {
+  const parsed = calendarioSchema.safeParse(req.query);
+  if (!parsed.success)
+    return res.status(400).json({ error: parsed.error.issues[0].message });
+  const { desde, hasta } = parsed.data;
+  if (hasta < desde)
+    return res.status(400).json({ error: "El hasta no puede ser anterior al desde" });
+  if ((inicioDeDiaUY(hasta) - inicioDeDiaUY(desde)) / 86400000 + 1 > MAX_DIAS_CALENDARIO)
+    return res.status(400).json({ error: `Se pueden pedir hasta ${MAX_DIAS_CALENDARIO} días` });
+  try {
+    const prisma = getPrisma();
+    // todas las activas (son pocas: hacen falta enteras para el estado y las
+    // reservas de la cochera) y, de las liberadas, solo las que tocan el rango
+    const cocheras = await prisma.cochera.findMany({
+      include: {
+        asignaciones: {
+          where: {
+            OR: [
+              { liberadaEn: null },
+              // liberadas: empezó antes de que termine el rango y se liberó
+              // después de que empieza (el filtro fino se hace abajo)
+              { desde: { lte: aColumnaDia(hasta) }, liberadaEn: { gte: inicioDeDiaUY(desde) } },
+            ],
+          },
+        },
+      },
+    });
+    const hoy = hoyUY();
+    const resultado = cocheras.map((c) => {
+      const activas = c.asignaciones.filter((a) => !a.liberadaEn);
+      const barras = c.asignaciones
+        .map((a) => barra(a, hoy))
+        // solo las que se ven en el rango pedido
+        .filter((b) => b && b.desde <= hasta && (b.hasta === null || b.hasta >= desde))
+        .sort((a, b) => (a.desde < b.desde ? -1 : 1));
+      return { ...armarCochera({ ...c, asignaciones: activas }, hoy), barras };
+    });
+    res.json(resultado.sort(porCodigo));
   } catch (err) {
     next(err);
   }

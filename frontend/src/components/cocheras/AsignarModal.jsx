@@ -10,19 +10,20 @@ import { hoyUY, sumarDias, fechaCorta } from '@/utils/fechas'
 //  - modo "reservar": está ocupada y se carga una reserva para más adelante
 //  - modo "reasignar": está ocupada; se cierra la actual y empieza la nueva
 // Si el "desde" es posterior a hoy, es una reserva y necesita "hasta".
+// `inicial` = { desde, hasta } ya elegidos (desde el calendario).
 // onListo() avisa a la pantalla que recargue la lista.
 const TITULO = {
-  asignar: (c) => `Asignar ${c}`,
+  asignar: (c, aFuturo) => `${aFuturo ? 'Reservar' : 'Asignar'} ${c}`,
   reservar: (c) => `Reservar ${c}`,
   reasignar: (c) => `${c} a otro apartamento`,
 }
 
-export default function AsignarModal({ cochera, modo, onClose, onListo }) {
+export default function AsignarModal({ cochera, modo, inicial, onClose, onListo }) {
   const hoy = hoyUY()
   const [form, setForm] = useState({
     apartamento: '',
-    desde: modo === 'reservar' ? sumarDias(hoy, 1) : hoy,
-    hasta: '',
+    desde: inicial?.desde ?? (modo === 'reservar' ? sumarDias(hoy, 1) : hoy),
+    hasta: inicial?.hasta ?? '',
   })
   const [guardando, setGuardando] = useState(false)
   const aFuturo = form.desde > hoy
@@ -55,7 +56,7 @@ export default function AsignarModal({ cochera, modo, onClose, onListo }) {
   }
 
   return (
-    <Modal titulo={TITULO[modo](cochera.codigo)} onClose={onClose}>
+    <Modal titulo={TITULO[modo](cochera.codigo, aFuturo)} onClose={onClose}>
       {modo === 'reasignar' && (
         <p className="text-sm text-text-secondary">
           Se cierra la asignación del apto. {cochera.asignacion.apartamento} y empieza la nueva.

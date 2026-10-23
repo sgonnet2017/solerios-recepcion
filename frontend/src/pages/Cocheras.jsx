@@ -9,6 +9,8 @@ import CocheraCard from '@/components/cocheras/CocheraCard'
 import AsignarModal from '@/components/cocheras/AsignarModal'
 import ExtenderModal from '@/components/cocheras/ExtenderModal'
 import HistorialModal from '@/components/cocheras/HistorialModal'
+import CalendarioCocheras from '@/components/cocheras/CalendarioCocheras'
+import BarraModal from '@/components/cocheras/BarraModal'
 import { fechaCorta } from '@/utils/fechas'
 
 const FILTROS = [
@@ -18,13 +20,39 @@ const FILTROS = [
   { valor: 'vencida', etiqueta: 'Vencidas' },
 ]
 
+const VISTAS = [
+  { valor: 'tarjetas', etiqueta: 'Tarjetas' },
+  { valor: 'calendario', etiqueta: 'Calendario' },
+]
+
+// la vista elegida se recuerda en el navegador (si no se puede, tarjetas)
+function vistaGuardada() {
+  try {
+    return localStorage.getItem('recepcion-vista-cocheras') === 'calendario' ? 'calendario' : 'tarjetas'
+  } catch {
+    return 'tarjetas'
+  }
+}
+
 export default function Cocheras() {
   const [cocheras, setCocheras] = useState(null) // null = cargando
   const [errorCarga, setErrorCarga] = useState(false)
   const [filtro, setFiltro] = useState('todas')
   const [busqueda, setBusqueda] = useState('')
-  // la ventana abierta: { tipo: 'asignar' | 'extender' | ..., cochera }
+  const [vista, setVista] = useState(vistaGuardada)
+  // sube en 1 después de guardar algo, para que el calendario se recargue
+  const [version, setVersion] = useState(0)
+  // la ventana abierta: { tipo: 'asignar' | 'extender' | 'barra' | ..., cochera, reserva?, barra?, inicial? }
   const [abierto, setAbierto] = useState(null)
+
+  function elegirVista(v) {
+    setVista(v)
+    try {
+      localStorage.setItem('recepcion-vista-cocheras', v)
+    } catch {
+      // sin almacenamiento: se elige de nuevo la próxima vez
+    }
+  }
 
   const cargar = useCallback(async () => {
     try {
@@ -44,6 +72,7 @@ export default function Cocheras() {
   function alTerminar() {
     setAbierto(null)
     cargar()
+    setVersion((v) => v + 1)
   }
 
   async function liberar(cochera) {
@@ -94,6 +123,17 @@ export default function Cocheras() {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+        <div className="flex shrink-0 rounded-lg border border-border-subtle overflow-hidden self-start">
+          {VISTAS.map(({ valor, etiqueta }) => (
+            <button
+              key={valor}
+              onClick={() => elegirVista(valor)}
+              className={`px-3 py-1.5 text-sm ${vista === valor ? 'bg-gold text-white' : 'text-text-secondary hover:bg-bg-hover'}`}
+            >
+              {etiqueta}
+            </button>
+          ))}
+        </div>
         <div className="flex flex-wrap gap-2">
           {FILTROS.map(({ valor, etiqueta }) => (
             <button
@@ -119,6 +159,16 @@ export default function Cocheras() {
 
       {visibles.length === 0 ? (
         <p className="text-text-muted text-sm">Ninguna cochera coincide.</p>
+      ) : vista === 'calendario' ? (
+        // mismos filtros y búsqueda: el calendario muestra solo esas cocheras
+        <CalendarioCocheras
+          idsVisibles={new Set(visibles.map((c) => c.id))}
+          version={version}
+          onBarra={(cochera, barra) => setAbierto({ tipo: 'barra', cochera, barra })}
+          onAsignar={(cochera, desde, hasta) =>
+            setAbierto({ tipo: 'asignar', cochera, inicial: { desde, hasta } })
+          }
+        />
       ) : (
         // grid-cols-1: en el celular, una columna del ancho exacto de la
         // pantalla (sin eso, una línea larga como "Reservada: ..." la estira)
@@ -137,8 +187,17 @@ export default function Cocheras() {
         <AsignarModal
           cochera={abierto.cochera}
           modo={abierto.tipo}
+          inicial={abierto.inicial}
           onClose={() => setAbierto(null)}
           onListo={alTerminar}
+        />
+      )}
+      {abierto?.tipo === 'barra' && (
+        <BarraModal
+          cochera={abierto.cochera}
+          barra={abierto.barra}
+          onAccion={(tipo, reserva) => setAbierto({ tipo, cochera: abierto.cochera, reserva })}
+          onClose={() => setAbierto(null)}
         />
       )}
       {abierto?.tipo === 'extender' && (
